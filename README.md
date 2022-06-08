@@ -23,15 +23,20 @@ python3 metric_agent.py <agent_name:str> <agent_interval:int>
 ```
 
 ## Metrics
+### CPU
 - Percentage of CPU Utilization
 - CPUs Average Frequency
 - CPU Temperature
 - CPU Fan Speed
+### Memory
 - Percentage of Memory Usage
 - Bytes of Memory Used
+### Swap
 - Percentage of Swap Usage
 - Bytes of Swap Used
+### Network
 - \# of Packets Sent over Network
 - \# of Packets Received over Network
 - \# of Connections (INET connections)
+### Battery
 - Percentage of Battery Power
