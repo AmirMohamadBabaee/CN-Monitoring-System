@@ -1,5 +1,5 @@
 # CN-Monitoring-System
-Final project of Computer Network course at Amirkabir University of Technology. THe project is the implementation of a monitoring prometheus metric client that receive metrics from different agent and merge them in prometheus metrics and expose them for Prometheus Scraper.
+Final project of Computer Network course at Amirkabir University of Technology. The project is the implementation of a monitoring prometheus metric client that receive metrics from different agent and merge them in prometheus metrics and expose them for Prometheus Scraper.
 
 ## Requirements
 ```
