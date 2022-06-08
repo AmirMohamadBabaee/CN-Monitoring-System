@@ -6,6 +6,7 @@ import logging
 import socket
 import selectors
 import types
+import json
 
 class MetricAgent:
 
@@ -54,7 +55,7 @@ class MetricAgent:
     def extract_cpu_temperature(self):
 
         try:
-            cpu_temperature = psutil.sensors_temperatures().get('acpitz').current
+            cpu_temperature = psutil.sensors_temperatures().get('acpitz')[0][1]
             return cpu_temperature
         except:
             self.logger.error('Exception in extract_cpu_temperature', exc_info=True)
@@ -62,7 +63,8 @@ class MetricAgent:
     def extract_cpu_fan_speed(self):
 
         try:
-            cpu_fan_speed = psutil.sensors_fans.get('asus').current
+            cpu_fan_speed = psutil.sensors_fans().get('asus')[0][1]
+            return cpu_fan_speed
         except: 
             self.logger.error('Exception in extract_cpu_fan_speed', exc_info=True)
 
@@ -73,10 +75,20 @@ class MetricAgent:
         memory_usage_percent = psutil.virtual_memory().percent
         return memory_usage_percent
 
+    def extract_memory_usage_bytes(self):
+
+        memory_usage_percent = psutil.virtual_memory().used
+        return memory_usage_percent
+
     def extract_swap_usage_percent(self):
 
         swap_usage_percent = psutil.swap_memory().percent
         return swap_usage_percent
+
+    def extract_swap_usage_bytes(self):
+
+        memory_usage_percent = psutil.swap_memory().used
+        return memory_usage_percent
 
     # Disk Metrics
 
@@ -173,7 +185,7 @@ class MetricAgent:
                 
                 if recv_data:
                     print(f"Received {recv_data!r} from connection {data.connid}")
-                    data.recv_total += len(recv_data)
+                    data.recv_total += int(recv_data)
 
                 if not recv_data or data.recv_total == data.msg_total:
                     print(f"Closing connection to {self.server_ip, self.server_port}")
@@ -210,22 +222,40 @@ class MetricAgent:
         return False
 
     def aggregate_metrics(self):
+
         metrics = dict()
-        metrics['cpu_utilization_percent'] = self.extract_cpu_utilization_percent()
-        metrics['cpu_frequency_average'] = self.extract_cpu_frequency_average()
-        metrics['extract_cpu_temperature'] = self.extract_cpu_temperature()
-        metrics['cpu_fan_speed'] = self.extract_cpu_fan_speed()
-        metrics['memory_usage_percent'] = self.extract_memory_usage_percent()
-        metrics['swap_usage_percent'] = self.extract_swap_usage_percent()
-        pkt_sent, pkt_rcvd = self.extract_net_packet_sent_rcvd_count()
-        metrics['net_packet_sent_count'] = pkt_sent
-        metrics['net_packet_rcvd_count'] = pkt_rcvd
-        metrics['net_connections_number'] = self.extract_net_connections_number()
-        metrics['battery_percent'] = self.extrct_battery_percent()
+
+        metrics['cpu_utilization_percent']  = self.extract_cpu_utilization_percent()
+        metrics['cpu_frequency_average']    = self.extract_cpu_frequency_average()
+        metrics['extract_cpu_temperature']  = self.extract_cpu_temperature()
+        metrics['cpu_fan_speed']            = self.extract_cpu_fan_speed()
+
+        metrics['memory_usage_percent']     = self.extract_memory_usage_percent()
+        metrics['memory_usage_bytes']       = self.extract_memory_usage_bytes()
+
+        metrics['swap_usage_percent']       = self.extract_swap_usage_percent()
+        metrics['swap_usage_bytes']         = self.extract_swap_usage_bytes()
+
+        pkt_sent, pkt_rcvd                  = self.extract_net_packet_sent_rcvd_count()
+        metrics['net_packet_sent_count']    = pkt_sent
+        metrics['net_packet_rcvd_count']    = pkt_rcvd
+        metrics['net_connections_number']   = self.extract_net_connections_number()
+
+        metrics['battery_percent']          = self.extrct_battery_percent()
+
         return metrics
 
-    def 
+    def send_metrics(self):
+        metrics = self.aggregate_metrics()
+        metrics_json = json.dumps(metrics)
+        metrics_json_encoded = metrics_json.encode('utf-8')
+        # print(f'{metrics_json_encoded!r}')
+        self.messages = [metrics_json_encoded]
+        self.send_to_server(num_conns=1)
+
+
 
 if __name__ == '__main__':
     ma = MetricAgent('first agent')
-    ma.send_to_server(1)
+    # ma.send_to_server(1)
+    ma.send_metrics()

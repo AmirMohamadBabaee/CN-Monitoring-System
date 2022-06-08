@@ -3,6 +3,7 @@ import socket
 import types
 import selectors
 import logging
+import json
 
 HOST = '127.0.0.1'
 PORT = 9999
@@ -68,21 +69,30 @@ class MetricServer:
     def service_connection(self, key, mask):
             
         try:
+
             sock = key.fileobj
             data = key.data
+
             if mask & selectors.EVENT_READ:
+
                 recv_data = sock.recv(1024)  # Should be ready to read
+                
                 if recv_data:
                     data.outb += recv_data
-                else:
-                    print(f"Closing connection to {data.addr}")
+
+            if mask & selectors.EVENT_WRITE:
+                
+                if data.outb:
+
+                    # Acknowledge Receive of data to agents
+                    print(f"Echoing {len(data.outb)} byte received from {data.addr}")
+                    sock.send(f'{len(data.outb)}'.encode('utf-8'))  # Should be ready to write
+                    print(f'Closing current socket {data.addr}')
                     self.sel.unregister(sock)
                     sock.close()
-            if mask & selectors.EVENT_WRITE:
-                if data.outb:
-                    print(f"Echoing {data.outb!r} to {data.addr}")
-                    sent = sock.send(data.outb)  # Should be ready to write
-                    data.outb = data.outb[sent:]
+
+                    self.load_metrics(data.outb)
+
         except ConnectionResetError as e:
             print(f'Closing current socket {data.addr}')
             self.sel.unregister(sock)
@@ -93,6 +103,13 @@ class MetricServer:
             self.sel.unregister(sock)
             sock.close()
             print(e)
+
+    def load_metrics(self, metrics_json_encoded):
+        
+        metrics_json = metrics_json_encoded.decode('utf-8')
+        metrics = json.loads(metrics_json)
+        print(f'metrics: {metrics}')
+        return metrics
 
 
 if __name__ == "__main__":
