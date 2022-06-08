@@ -1,5 +1,4 @@
-#!/usr/bin/python3
-
+import sys
 import time
 import psutil
 import logging
@@ -10,9 +9,10 @@ import json
 
 class MetricAgent:
 
-    def __init__(self, agentName, server_ip='127.0.0.1', server_port=9999):
+    def __init__(self, agentName, sentInterval=2, server_ip='127.0.0.1', server_port=9999):
         
         self.agentName = agentName
+        self.sentInterval = sentInterval
         self.logger = self.init_logger()
         self.sel = selectors.DefaultSelector()
         self.server_ip = server_ip
@@ -167,10 +167,9 @@ class MetricAgent:
                     break
         except KeyboardInterrupt:
             print("Caught keyboard interrupt, exiting")
+            self.sel.close()
         except:
             self.logger.error('Exception in send_to_server', exc_info=True)
-        finally:
-            self.sel.close()
 
     def service_connection(self, key, mask):
         
@@ -199,7 +198,7 @@ class MetricAgent:
                     data.outb = data.messages.pop(0)
 
                 if data.outb:
-                    print(f"Sending {data.outb!r} to connection {data.connid}")
+                    # print(f"Sending {data.outb!r} to connection {data.connid}")
                     sent = sock.send(data.outb)  # Should be ready to write
                     data.outb = data.outb[sent:] 
 
@@ -225,6 +224,7 @@ class MetricAgent:
 
         metrics = dict()
 
+        metrics['agent_name']               = self.agentName
         metrics['cpu_utilization_percent']  = self.extract_cpu_utilization_percent()
         metrics['cpu_frequency_average']    = self.extract_cpu_frequency_average()
         metrics['cpu_temperature']          = self.extract_cpu_temperature()
@@ -246,16 +246,42 @@ class MetricAgent:
         return metrics
 
     def send_metrics(self):
-        metrics = self.aggregate_metrics()
-        metrics_json = json.dumps(metrics)
-        metrics_json_encoded = metrics_json.encode('utf-8')
-        # print(f'{metrics_json_encoded!r}')
-        self.messages = [metrics_json_encoded]
-        self.send_to_server(num_conns=1)
+        while True:
+            try:
+                metrics = self.aggregate_metrics()
+                metrics_json = json.dumps(metrics)
+                metrics_json_encoded = metrics_json.encode('utf-8')
+                # print(f'{metrics_json_encoded!r}')
+                self.messages = [metrics_json_encoded]
+                self.send_to_server(num_conns=1)
+                time.sleep(self.sentInterval)
+            except KeyboardInterrupt:
+                self.logger.warning('Caught keyboard interrupt, exiting')
+                break
 
 
 
 if __name__ == '__main__':
-    ma = MetricAgent('first agent')
-    # ma.send_to_server(1)
+
+    agent_name = None
+    agent_interval = None
+
+    argv_len = len(sys.argv)
+
+    if argv_len == 2:
+
+        agent_name = sys.argv[1]
+        agent_interval = 2
+    
+    elif argv_len == 3:
+
+        agent_name = sys.argv[1]
+        agent_interval = sys.argv[2]
+
+    else:
+
+        agent_name = f'agent-{hex(int(time.time()))[2:]}'
+        agent_interval = 2
+
+    ma = MetricAgent(agent_name, agent_interval)
     ma.send_metrics()
