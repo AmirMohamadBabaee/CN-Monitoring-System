@@ -227,7 +227,7 @@ class MetricAgent:
 
         metrics['cpu_utilization_percent']  = self.extract_cpu_utilization_percent()
         metrics['cpu_frequency_average']    = self.extract_cpu_frequency_average()
-        metrics['extract_cpu_temperature']  = self.extract_cpu_temperature()
+        metrics['cpu_temperature']          = self.extract_cpu_temperature()
         metrics['cpu_fan_speed']            = self.extract_cpu_fan_speed()
 
         metrics['memory_usage_percent']     = self.extract_memory_usage_percent()
