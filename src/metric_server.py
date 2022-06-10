@@ -3,6 +3,7 @@ import types
 import selectors
 import logging
 import json
+import time
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 HOST = '127.0.0.1'
@@ -37,13 +38,18 @@ class MetricServer:
         return logger
 
     def init_socket(self):
-        lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        lsock.bind((self.server_ip, self.server_port))
-        lsock.listen()
-        self.logger.info(f'listen on {(self.server_ip, self.server_port)}')
-        lsock.setblocking(False)
-        self.sel.register(lsock, selectors.EVENT_READ, data=None)
-        return lsock
+        while True:
+            try:
+                lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                lsock.bind((self.server_ip, self.server_port))
+                lsock.listen()
+                self.logger.info(f'listen on {(self.server_ip, self.server_port)}')
+                lsock.setblocking(False)
+                self.sel.register(lsock, selectors.EVENT_READ, data=None)
+                return lsock
+            except OSError as e:
+                self.logger.warning(f'This port Number ({((self.server_ip, self.server_port))}) already in use. Try again in 5s...')
+                time.sleep(5)
 
     def run(self):
         
